@@ -1,8 +1,11 @@
 # Discopanel Widget
-Lists all servers in your Discopanel host. Server icon functionality requires using a url for the picture. These can be obtained from the curseforge or modrinth page directly. I imagine that using direct file paths would also work, you just might have to adjust how the picture file path is read in glance.
+Lists all servers in your Discopanel host. Server icon functionality requires using a url for the picture. These can be obtained from the curseforge or modrinth page directly. I imagine that using direct file paths would also work, you just might have to adjust how the picture file path is read in glance. I have not tested this functionality so there may be some amount of testing you would need to do. 
+
+Discopanel v2.0.0 is here! This means that you will have to create a api token from the user page to use this functionality. The only permissions this app needs are `Read: Servers` and `Read: Server Config`. You can limit this to specific servers so you only get to see a certain selection of the servers on your Discopanel host or just add all of them! As of v2.0.1, you cannot determine the permissions of an API Token on a token by token basis, so I created a new user with only the permissions I described using the Roles Settings menu in Discopanel. Then, I made a new user with only that role and made an API Token from there. Once you have that token you can just past it into the environment variable and you are done!
 
 # Environment Variables
 `DISCOPANEL_HOST` = URL/IP of Discopanel host. Requires http/https prefix. 
+`DISCOPANEL_TOKEN` = API Token used to authenticate with the Discopanel Server
 
 # Preview
 <img width="926" height="677" alt="Preview Image" src="preview.png"/>
@@ -12,28 +15,12 @@ Lists all servers in your Discopanel host. Server icon functionality requires us
 - type: custom-api
   title: Discopanel
   cache: 30s
-  url: ${DISCOPANEL_HOST}/discopanel.v1.AuthService/Login
-  headers:
-    Connect-Protocol-Version: 1
-    Connect-Timeout-Ms: 2000
-    Content-Type: application/json
-  method: POST
-  body-type: json
-  body:
-    username: $(DISCOPANEL_USERNAME)
-    password: $(DISCOPANEL_PASS)
-  skip-json-validation: true
   template: |
-    {{ $token := .JSON.String "0.token" }}
-    <p>{{ $token }}</p>
-
     {{ $serverList := newRequest "${DISCOPANEL_HOST}/discopanel.v1.ServerService/ListServers"
-        | withHeader "Connect-Protocol-Version" "1"
-        | withHeader "Connect-Timeout-Ms" "2000"
-        | withHeader "Content-Type" "application/json"
-        | withHeader "Authorization" (printf `{"Bearer %s"}` $token)
-        | withStringBody (printf `{"fullStats": true}`)
-        | getResponse
+      | withHeader "Content-Type" "application/json"
+      | withHeader "Authorization" "Bearer ${DISCOPANEL_TOKEN}"
+      | withStringBody `{"fullStats": true}`
+      | getResponse
     }}
 
     {{ range $serverList.JSON.Array "servers" }}
@@ -47,10 +34,8 @@ Lists all servers in your Discopanel host. Server icon functionality requires us
       {{ $status := .String "status" }}
 
       {{ $serverConfig := newRequest "${DISCOPANEL_HOST}/discopanel.v1.ConfigService/GetServerConfig"
-        | withHeader "Connect-Protocol-Version" "1"
-        | withHeader "Connect-Timeout-Ms" "2000"
         | withHeader "Content-Type" "application/json"
-        | withHeader "Authorization" (printf `{"Bearer %s"}` $token)
+        | withHeader "Authorization" "Bearer ${DISCOPANEL_TOKEN}"
         | withStringBody (printf `{"serverId": %q}` $id)
         | getResponse
       }}
